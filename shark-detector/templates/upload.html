@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+    <h2 class="text-3xl font-bold mb-4">Upload Your Image or Zip File</h2>
+    <form id="upload-form" enctype="multipart/form-data" method="post">
+        <input type="file" name="file" accept=".png,.jpg,.jpeg,.zip" class="border p-2 mb-4 w-full">
+        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Upload</button>
+    </form>
+    <div id="results" class="mt-6"></div>
+</div>
+
+<script>
+document.getElementById('upload-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const response = await fetch('/upload', {
+        method: 'POST',
+        body: formData
+    });
+    const result = await response.json();
+    let resultHtml = '';
+    if(result.error) {
+        resultHtml = `<p class="text-red-600">${result.error}</p>`;
+    } else {
+        for (const [filename, data] of Object.entries(result)) {
+            resultHtml += `<div class="border p-4 mb-4 rounded">
+                <h3 class="font-bold">${filename}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            </div>`;
+        }
+    }
+    document.getElementById('results').innerHTML = resultHtml;
+});
+</script>
+{% endblock %}
