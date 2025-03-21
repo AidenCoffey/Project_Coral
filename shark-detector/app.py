@@ -1,8 +1,8 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from werkzeug.utils import secure_filename
 import os
 import zipfile
-from model import predict_shark  # Assume your model function is defined here
+from model import detect_and_classify  # Updated function for detection & classification
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -38,16 +38,19 @@ def upload():
             results = {}
             if filename.lower().endswith('.zip'):
                 # Extract zip and process each image
+                extracted_folder = os.path.join(app.config['UPLOAD_FOLDER'], filename[:-4])
+                os.makedirs(extracted_folder, exist_ok=True)
+
                 with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                    zip_ref.extractall(app.config['UPLOAD_FOLDER'])
-                # Loop through extracted files
-                for extracted_file in os.listdir(app.config['UPLOAD_FOLDER']):
+                    zip_ref.extractall(extracted_folder)
+
+                for extracted_file in os.listdir(extracted_folder):
                     if allowed_file(extracted_file) and not extracted_file.lower().endswith('.zip'):
-                        image_path = os.path.join(app.config['UPLOAD_FOLDER'], extracted_file)
-                        results[extracted_file] = predict_shark(image_path)
+                        image_path = os.path.join(extracted_folder, extracted_file)
+                        results[extracted_file] = detect_and_classify(image_path)
             else:
                 # Process single image
-                results[filename] = predict_shark(filepath)
+                results[filename] = detect_and_classify(filepath)
 
             return jsonify(results)
         else:
@@ -56,13 +59,15 @@ def upload():
 
 @app.route('/sharks')
 def sharks():
-    # You can load shark information from a database or static content
     shark_data = [
         {'name': 'Great White Shark', 'info': 'One of the largest predatory fish in the world.'},
         {'name': 'Hammerhead Shark', 'info': 'Known for its distinctive head shape.'},
-        # Add more entries as needed
     ]
     return render_template('sharks.html', shark_data=shark_data)
+
+@app.route('/output.jpg')
+def get_output_image():
+    return send_file("output.jpg", mimetype="image/jpeg")
 
 if __name__ == '__main__':
     app.run(debug=True)

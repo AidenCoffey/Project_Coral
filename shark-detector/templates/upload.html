@@ -6,6 +6,12 @@
         <input type="file" name="file" accept=".png,.jpg,.jpeg,.zip" class="border p-2 mb-4 w-full">
         <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Upload</button>
     </form>
+
+    <div id="image-container" class="mt-6 hidden">
+        <h3 class="text-xl font-bold mb-2">Processed Image:</h3>
+        <img id="uploadedImage" src="" alt="Detected Shark" class="w-full border rounded">
+    </div>
+
     <div id="results" class="mt-6"></div>
 </div>
 
@@ -18,6 +24,7 @@ document.getElementById('upload-form').addEventListener('submit', async function
         body: formData
     });
     const result = await response.json();
+
     let resultHtml = '';
     if(result.error) {
         resultHtml = `<p class="text-red-600">${result.error}</p>`;
@@ -25,9 +32,14 @@ document.getElementById('upload-form').addEventListener('submit', async function
         for (const [filename, data] of Object.entries(result)) {
             resultHtml += `<div class="border p-4 mb-4 rounded">
                 <h3 class="font-bold">${filename}</h3>
-                <pre>${JSON.stringify(data, null, 2)}</pre>
+                <p><strong>Species:</strong> ${data.species}</p>
+                <p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(2)}%</p>
             </div>`;
         }
+        
+        // Show the processed image
+        document.getElementById("uploadedImage").src = "/output.jpg";
+        document.getElementById("image-container").classList.remove("hidden");
     }
     document.getElementById('results').innerHTML = resultHtml;
 });
