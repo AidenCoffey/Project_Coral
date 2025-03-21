@@ -82,6 +82,8 @@ def detect_and_classify(image_path):
                     "bbox": [x1, y1, x2, y2]
                 })
 
+                print(detected_sharks, species, confidence, predicted_class)
+
                 # Draw bounding box & label
                 draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
                 draw.text((x1, y1 - 10), f"{species} ({round(confidence.item() * 100, 1)}%)", fill="red")

@@ -14,34 +14,55 @@
 
     <div id="results" class="mt-6"></div>
 </div>
-
 <script>
-document.getElementById('upload-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const response = await fetch('/upload', {
-        method: 'POST',
-        body: formData
-    });
-    const result = await response.json();
-
-    let resultHtml = '';
-    if(result.error) {
-        resultHtml = `<p class="text-red-600">${result.error}</p>`;
-    } else {
-        for (const [filename, data] of Object.entries(result)) {
-            resultHtml += `<div class="border p-4 mb-4 rounded">
-                <h3 class="font-bold">${filename}</h3>
-                <p><strong>Species:</strong> ${data.species}</p>
-                <p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(2)}%</p>
-            </div>`;
-        }
+    document.getElementById('upload-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
         
-        // Show the processed image
-        document.getElementById("uploadedImage").src = "/output.jpg";
-        document.getElementById("image-container").classList.remove("hidden");
-    }
-    document.getElementById('results').innerHTML = resultHtml;
-});
-</script>
+        // Send request to Flask
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+    
+        // Parse JSON response
+        const result = await response.json();
+    
+        let resultHtml = '';
+    
+        if (result.error) {
+            resultHtml = `<p class="text-red-600">${result.error}</p>`;
+        } else {
+            for (const [filename, fileData] of Object.entries(result)) {
+                if (!fileData.detections || fileData.detections.length === 0) {
+                    resultHtml += `<div class="border p-4 mb-4 rounded">
+                        <h3 class="font-bold">${filename}</h3>
+                        <p>No sharks detected.</p>
+                    </div>`;
+                    continue;
+                }
+    
+                resultHtml += `<div class="border p-4 mb-4 rounded">
+                    <h3 class="font-bold">${filename}</h3>`;
+    
+                fileData.detections.forEach(detection => {
+                    resultHtml += `
+                    <p><strong>Species:</strong> ${detection.species}</p>
+                    <p><strong>Confidence:</strong> ${(detection.confidence * 100).toFixed(2)}%</p>
+                    <hr>`;
+                });
+    
+                resultHtml += `</div>`;
+            }
+    
+            // Show the processed image (if available)
+            if (result[Object.keys(result)[0]].output_image) {
+                document.getElementById("uploadedImage").src = "/" + result[Object.keys(result)[0]].output_image;
+                document.getElementById("image-container").classList.remove("hidden");
+            }
+        }
+    
+        document.getElementById('results').innerHTML = resultHtml;
+    });
+    </script>
 {% endblock %}
