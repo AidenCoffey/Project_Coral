@@ -2,9 +2,20 @@ import torch
 from PIL import Image
 import torchvision.transforms as transforms
 
-# Load your model here (example)
-# model = torch.load('your_model.pth', map_location=torch.device('cpu'))
-# model.eval()
+from efficientnet_pytorch import EfficientNet
+import torch
+
+# Load the state dict into the model, using strict=False to handle any mismatched keys
+model = models.efficientnet_b0(weights='DEFAULT')  # Initialize the same architecture
+num_ftrs = model.classifier[1].in_features
+model.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # Assuming 10 classes (shark species)
+model.load_state_dict(torch.load('/home/iambrink/Shark_Object_Detection/Shark_AI_Detection_Model_V2'))  # Load the pre-saved model's state
+# Set the model to evaluation mode
+model.eval()
+
+# Move the model to the appropriate device (CPU or GPU)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
 def predict_shark(image_path):
     """
