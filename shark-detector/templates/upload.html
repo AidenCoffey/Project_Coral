@@ -2,67 +2,81 @@
 {% block content %}
 <div class="max-w-xl mx-auto">
     <h2 class="text-3xl font-bold mb-4">Upload Your Image or Zip File</h2>
+    
     <form id="upload-form" enctype="multipart/form-data" method="post">
         <input type="file" name="file" accept=".png,.jpg,.jpeg,.zip" class="border p-2 mb-4 w-full">
-        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Upload</button>
+        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+            Upload
+        </button>
     </form>
 
-    <div id="image-container" class="mt-6 hidden">
-        <h3 class="text-xl font-bold mb-2">Processed Image:</h3>
-        <img id="uploadedImage" src="" alt="Detected Shark" class="w-full border rounded">
-    </div>
+    <!-- Loading message -->
+    <p id="loading-message" class="text-gray-600 mt-4 hidden">Processing, please wait...</p>
 
-    <div id="results" class="mt-6"></div>
+    <div id="image-container" class="mt-6 hidden">
+        <h3 class="text-xl font-bold mb-2">Processed Images:</h3>
+        <div id="image-list" class="grid grid-cols-2 gap-4"></div> <!-- Holds images & results -->
+    </div>
 </div>
+
 <script>
-    document.getElementById('upload-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        
-        // Send request to Flask
+document.getElementById('upload-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    // Show loading message
+    document.getElementById('loading-message').classList.remove("hidden");
+    document.getElementById('image-list').innerHTML = ''; // Clear previous images
+
+    try {
         const response = await fetch('/upload', {
             method: 'POST',
             body: formData
         });
-    
-        // Parse JSON response
-        const result = await response.json();
-    
-        let resultHtml = '';
-    
-        if (result.error) {
-            resultHtml = `<p class="text-red-600">${result.error}</p>`;
+
+        const results = await response.json();
+        document.getElementById('loading-message').classList.add("hidden"); // Hide loading message
+        
+        let imagesHtml = '';
+
+        if (results.error) {
+            document.getElementById('image-list').innerHTML = `<p class="text-red-600">${results.error}</p>`;
         } else {
-            for (const [filename, fileData] of Object.entries(result)) {
-                if (!fileData.detections || fileData.detections.length === 0) {
-                    resultHtml += `<div class="border p-4 mb-4 rounded">
-                        <h3 class="font-bold">${filename}</h3>
-                        <p>No sharks detected.</p>
-                    </div>`;
-                    continue;
+            results.forEach((fileData) => {
+                if (fileData.output_image) {
+                    let detectionsHtml = '';
+
+                    if (!fileData.detections || fileData.detections.length === 0) {
+                        detectionsHtml = `<p class="text-gray-600 text-sm">Model could not detect a shark.</p>`;
+                    } else {
+                        fileData.detections.forEach(detection => {
+                            detectionsHtml += `
+                                <p class="text-gray-800 text-sm">
+                                    <strong>Species:</strong> ${detection.species} <br>
+                                    <strong>Confidence:</strong> ${(detection.confidence * 100).toFixed(2)}%
+                                </p>`;
+                        });
+                    }
+
+                    imagesHtml += `
+                        <div class="image-result border rounded-lg shadow p-2 bg-white">
+                            <img src="/processed/${fileData.output_image}?t=${new Date().getTime()}" 
+                                 class="w-full h-48 object-cover rounded-lg" alt="Processed Image">
+                            <div class="text-center mt-2">${detectionsHtml}</div>
+                        </div>
+                    `;
                 }
-    
-                resultHtml += `<div class="border p-4 mb-4 rounded">
-                    <h3 class="font-bold">${filename}</h3>`;
-    
-                fileData.detections.forEach(detection => {
-                    resultHtml += `
-                    <p><strong>Species:</strong> ${detection.species}</p>
-                    <p><strong>Confidence:</strong> ${(detection.confidence * 100).toFixed(2)}%</p>
-                    <hr>`;
-                });
-    
-                resultHtml += `</div>`;
-            }
-    
-            // Show the processed image (if available)
-            if (result[Object.keys(result)[0]].output_image) {
-                document.getElementById("uploadedImage").src = "/" + result[Object.keys(result)[0]].output_image;
+            });
+
+            if (imagesHtml !== '') {
                 document.getElementById("image-container").classList.remove("hidden");
+                document.getElementById("image-list").innerHTML = imagesHtml;
             }
         }
-    
-        document.getElementById('results').innerHTML = resultHtml;
-    });
-    </script>
+    } catch (error) {
+        document.getElementById('loading-message').classList.add("hidden");
+        document.getElementById('image-list').innerHTML = `<p class="text-red-600">Error processing request.</p>`;
+    }
+});
+</script>
 {% endblock %}

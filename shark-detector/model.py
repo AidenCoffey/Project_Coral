@@ -6,6 +6,8 @@ from torchvision.models.detection import FasterRCNN_ResNet50_FPN_Weights
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from PIL import Image, ImageDraw
 import numpy as np
+import datetime
+from PIL import ImageFont
 
 # Define class names for classification
 class_names = [
@@ -45,10 +47,32 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
+# CONFIDENCE_THRESHOLD = 0.65
+
+def interpolate_color(confidence):
+    """Interpolates color from blue (low confidence) to green (mid confidence) to red (high confidence)."""
+    if confidence <= 0.7:
+        return (0, 0, 255)  # Blue for low confidence
+    elif confidence <= 0.8:
+        ratio = (confidence - 0.7) / 0.1
+        r = int(0 + (0 * ratio))  # Still 0 (blue to green transition)
+        g = int(0 + (255 * ratio))  # Increasing green
+        b = int(255 - (255 * ratio))  # Decreasing blue
+        return (r, g, b)
+    else:
+        ratio = (confidence - 0.8) / 0.2
+        r = int(0 + (255 * ratio))  # Increasing red
+        g = int(255 - (255 * ratio))  # Decreasing green
+        b = 0  # Fully red transition
+        return (r, g, b)
+
 def detect_and_classify(image_path):
     try:
-        # Load and preprocess image
         image = Image.open(image_path).convert('RGB')
+        target_size = (640, 400)  # Adjust as needed
+        image = image.resize(target_size, Image.Resampling.LANCZOS)
+
+        # Convert image to tensor
         image_tensor = transforms.ToTensor()(image).unsqueeze(0).to(device)
 
         # Detect objects
@@ -57,7 +81,7 @@ def detect_and_classify(image_path):
 
         boxes = detections['boxes'].cpu().numpy()
         scores = detections['scores'].cpu().numpy()
-        threshold = 0.6  # Confidence threshold for detection
+        threshold = 0.6  # Confidence threshold for detection in Faster R-CNN
 
         detected_sharks = []
         draw = ImageDraw.Draw(image)
@@ -76,17 +100,29 @@ def detect_and_classify(image_path):
                     confidence, predicted_class = torch.max(probabilities, dim=0)
 
                 species = class_names[predicted_class.item()]
+                confidence_value = confidence.item()
+
+                # if confidence_value >= CONFIDENCE_THRESHOLD:
                 detected_sharks.append({
                     "species": species,
-                    "confidence": round(confidence.item(), 4),
+                    "confidence": round(confidence_value, 4),
                     "bbox": [x1, y1, x2, y2]
                 })
 
-                print(detected_sharks, species, confidence, predicted_class)
+                # Determine bounding box color
+                bbox_color = interpolate_color(confidence_value)
 
                 # Draw bounding box & label
-                draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
-                draw.text((x1, y1 - 10), f"{species} ({round(confidence.item() * 100, 1)}%)", fill="red")
+                draw.rectangle([x1, y1, x2, y2], outline=bbox_color, width=3)
+                draw.text((x1, y1 - 10), f"{species} ({round(confidence_value * 100, 1)}%)", fill=bbox_color)
+
+        # Add timestamp
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        font = ImageFont.load_default()  # Default font
+        text_size = draw.textbbox((0, 0), timestamp, font=font)
+        text_x = image.width - text_size[2] - 10
+        text_y = image.height - text_size[3] - 10
+        draw.text((text_x, text_y), timestamp, fill="white", font=font)
 
         # Save processed image
         output_path = "output.jpg"
