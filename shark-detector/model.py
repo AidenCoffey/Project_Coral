@@ -10,18 +10,7 @@ import datetime
 from PIL import ImageFont
 
 # Define class names for classification
-class_names = [
-    "Blue Shark", 
-    "Whale Shark",   
-    "Nurse Shark",
-    "Tiger Shark",
-    "White Tip Shark",
-    "Sand Tiger Shark",
-    "Bull Shark",
-    "Hammerhead Shark",    
-    "White Shark",     
-    "Mako Shark"
-]
+class_names = ['Black tip', 'Bonnethead', 'Nurse shark', 'Sand tiger', 'Spinner', 'Thresher', 'blue', 'bull', 'hammer', 'lemon', 'mako', 'tiger', 'tip', 'whale', 'white']
 
 # Set device (GPU if available)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,7 +24,7 @@ detector.eval()
 classifier = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
 num_ftrs = classifier.classifier[1].in_features
 classifier.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # Adjust output layer
-classifier.load_state_dict(torch.load("C:\\Users\\Aiden\\Project_Coral\\Shark_AI_Detection_Model_V2", map_location=device))
+classifier.load_state_dict(torch.load("C:\\Users\\Aiden\\Project_Coral\\shark_data_shart_edition_2.pth", map_location=device))
 classifier.to(device)
 classifier.eval()
 
